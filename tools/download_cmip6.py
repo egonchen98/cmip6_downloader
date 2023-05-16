@@ -78,7 +78,7 @@ def download_files(df: pd.DataFrame, target_folder: str, count_limit=4) -> None:
     """Download files from url with idm"""
     df = df.loc[df.end_date - df.st_date < 2e4]
     params = df['param'].unique()
-    pool = ThreadPoolExecutor(max_workers=20)
+    pool = ThreadPoolExecutor(max_workers=10)
     count = 0
     for param in params:
         # Check param folder existence
