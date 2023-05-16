@@ -69,8 +69,9 @@ def get_url() -> pd.DataFrame:
 
 def download_with_wget(url: str, path: str) -> None:
     """Download file with wget library"""
+
+    print(f'{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}--- downloading {path}...')
     wget.download(url, path)
-    print(f'--- {path} downloaded.')
 
 
 def download_files(df: pd.DataFrame, target_folder: str, count_limit=4) -> None:
@@ -111,9 +112,6 @@ def download_files(df: pd.DataFrame, target_folder: str, count_limit=4) -> None:
                         # download_with_wget(url=row.url,
                         #                    path=f'{target_folder}/{param}/{model}/{scenario}/{row.filename}',)
                         time.sleep(0.1)
-                        count = count + 1
-                        if count % 50 == 0:
-                            print(f'Downloaded {count} files')
 
     pool.shutdown()
 
@@ -123,7 +121,9 @@ def run(df: pd.DataFrame):
     # get_wget_files()
     # df = get_url()
     # print(df.to_string())
-    config = json.loads(Path('../resources/config.json').read_text())
+    cur_dir = os.path.dirname(__file__)
+    root_dir = Path(os.path.dirname(cur_dir))
+    config = json.loads(open(f'{root_dir}/resources/config.json').read())
     database = Path(config['Database_folder'])
     if not os.path.exists(database):
         os.makedirs(database)

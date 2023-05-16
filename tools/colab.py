@@ -21,7 +21,7 @@ def get_url_to_download() -> pd.DataFrame:
     conn = create_engine('mysql+pymysql://colab:colab123456@124.220.27.50/colab')
     df = pd.read_sql('cmip6_file_manager', conn)
     try:
-        df1 = df.loc[df.status == 'not requested'].sample(n=100)
+        df1 = df.loc[df.status == 'not requested'].sample(n=50)
     except Exception as e:
         print('All file downloaded......,\n You"ve finished your job, Thanks!!\n\n------------')
         job_finished = True
@@ -34,7 +34,9 @@ def get_url_to_download() -> pd.DataFrame:
 
 def log_downloaded_files() -> None:
     """Log downloaded files"""
-    config = json.loads(open('../resources/config.json').read())
+    cur_dir = os.path.dirname(__file__)
+    root_dir = Path(os.path.dirname(cur_dir))
+    config = json.loads(open(f'{root_dir}/resources/config.json').read())
     database = Path(config['Database_folder'])
 
     filelist = []
@@ -58,11 +60,18 @@ def log_downloaded_files() -> None:
 
 def run() -> None:
     """Run"""
-    # df = pd.read_csv('../resources/res.csv')
-    # df['status'] = 'not requested'
-    # write_df(df=df)
-    # df = get_url_to_download()
+    # reset database in mysql
+    df = pd.read_csv('../resources/res.csv')
+    df['status'] = 'not requested'
+    write_df(df=df)
 
+
+def test():
+    project_name = 'code'
+    cur_path = os.path.dirname(__file__)
+    path2 = os.path.dirname(cur_path)
+    path = os.path.join(path2, 'config.json')
+    print(cur_path, path2, path)
 
 
 if __name__ == '__main__':
