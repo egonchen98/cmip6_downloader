@@ -1,0 +1,5 @@
+1. 先安装Python的库, 在命令行执行： pip install -r requirements.txt
+
+2. 修改下载数据保存路径，打开resources文件夹内的config.json,将双引号内路径改为自己的电脑路径
+
+3. 运行主要程序：直接运行 main.py
