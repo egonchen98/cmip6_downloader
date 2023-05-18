@@ -8,7 +8,7 @@ import tools.download_cmip6 as download
 import tools.colab as colab
 
 
-# Press the green button in the gutter to run the script.
+# Press the green button in the gutter to run the script.:
 if __name__ == '__main__':
     config = json.loads(Path('./resources/config.json').read_text())
     database = config['Database_folder']

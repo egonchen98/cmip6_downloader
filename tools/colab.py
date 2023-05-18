@@ -51,10 +51,6 @@ def get_1_record():
 
 def download_1_record(res: dict, data_folder: str) -> None:
     """Download a record with wget library"""
-    def bar_progress(current, total, width=80):
-        progress_message = "%d%% [%d / %d] MB" % (current / total * 100, current / 10e6, total / 10e6)
-        # Don't use print() as it will print in new line every time.
-        sys.stdout.write("\r" + progress_message)
 
     file_folder = f'{data_folder}\\{res["param"]}\\{res["model"]}\\{res["scenario"]}'
     Path(file_folder).mkdir(parents=True, exist_ok=True)
@@ -68,7 +64,7 @@ def download_1_record(res: dict, data_folder: str) -> None:
             return None
         # Download file with wget library
         print(f'{datetime.datetime.now().strftime("%m-%d %H:%M:%S")}--- downloading {res["filename"]}')
-        wget.download(res['url'], file_path, bar=bar_progress)
+        wget.download(res['url'], file_path)
 
     return None
 
