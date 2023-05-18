@@ -18,7 +18,7 @@ def write_df(df: pd.DataFrame) -> None:
     """Write file table to mysql"""
     conn = create_engine('mysql+pymysql://colab:colab123456@124.220.27.50/colab')
 
-    # df.to_sql('cmip6_files', conn, if_exists='replace', index=False)
+    df.to_sql('cmip6_files', conn, if_exists='replace', index=False)
 
     return None
 
@@ -84,6 +84,22 @@ def update_downloaded_record(res: dict) -> None:
     return None
 
 
+def get_existing_logs(data_folder: str) -> pd.DataFrame:
+    """Get existing files ending with .nc under the data_folder directory containing childer folder"""
+    filelist = []
+    # Get all files under the database folder
+    for root, dirs, files in os.walk(data_folder):
+        for file in files:
+            if file.endswith('.nc'):
+                filelist.append(file)
+
+    df1 = pd.DataFrame(filelist, columns=['filename'])
+    df0 = pd.read_csv('../resources/res.csv')
+    df_merge = pd.merge(df0, df1, on='filename', how='right')
+    df_merge['status'] = 'downloaded'
+    return df_merge
+
+
 def run(res: dict, database: 'str') -> str:
     """Run"""
     try:
@@ -98,4 +114,10 @@ if __name__ == '__main__':
     # reset database in mysql
     df = pd.read_csv('../resources/res.csv')
     df['status'] = 'not requested'
-    # write_df(df=df)
+
+    data_folder = json.loads(Path('../resources/config.json').read_text())['Database_folder']
+    df_exist = get_existing_logs(data_folder=data_folder)
+
+    df.update(df_exist)
+    write_df(df=df)
+

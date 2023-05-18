@@ -12,15 +12,12 @@ import tools.colab as colab
 if __name__ == '__main__':
     config = json.loads(Path('./resources/config.json').read_text())
     database = config['Database_folder']
-    pool = ThreadPoolExecutor(max_workers=10)
+    pool = ThreadPoolExecutor(max_workers=5)
 
     while True:
 
-        records = []
-        for i in range(10):
-            """Get 10 records at a time"""
-            records.append(colab.get_1_record())
-        records = list(set(records))
+        records = [colab.get_1_record() for i in range(5)]
+        records = list({v['url']: v for v in records}.values())
         if 'Finished' in records:
             break
 
