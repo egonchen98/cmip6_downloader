@@ -1,4 +1,8 @@
 import os
+import json
+import time
+from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 
 import tools.download_cmip6 as download
 import tools.colab as colab
@@ -6,11 +10,25 @@ import tools.colab as colab
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
+    config = json.loads(Path('./resources/config.json').read_text())
+    database = config['Database_folder']
+    pool = ThreadPoolExecutor(max_workers=10)
 
-    job_finished = False
-    while not job_finished:
-        colab.log_downloaded_files()
-        df = colab.get_url_to_download()
-        download.run(df)
+    while True:
+
+        records = []
+        for i in range(10):
+            """Get 10 records at a time"""
+            records.append(colab.get_1_record())
+        records = list(set(records))
+        if 'Finished' in records:
+            break
+
+        # Add downloading threads
+        for index, res in enumerate(records):
+            pool.submit(colab.run, res, database)
+            time.sleep(1)
+        pool.shutdown()
+
 
 

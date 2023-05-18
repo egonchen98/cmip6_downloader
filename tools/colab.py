@@ -1,3 +1,10 @@
+import pathlib
+import random
+import wget
+import datetime
+import requests
+
+import sys
 import pandas as pd
 import pymysql
 from sqlalchemy import create_engine
@@ -11,68 +18,84 @@ def write_df(df: pd.DataFrame) -> None:
     """Write file table to mysql"""
     conn = create_engine('mysql+pymysql://colab:colab123456@124.220.27.50/colab')
 
-    df.to_sql('cmip6_file_manager', conn, if_exists='replace', index=False)
+    # df.to_sql('cmip6_files', conn, if_exists='replace', index=False)
 
     return None
 
 
-def get_url_to_download() -> pd.DataFrame:
-    """Get dataframe from mysql and write logged dataframe to mysql"""
-    conn = create_engine('mysql+pymysql://colab:colab123456@124.220.27.50/colab')
-    df = pd.read_sql('cmip6_file_manager', conn)
-    try:
-        df1 = df.loc[df.status == 'not requested'].sample(n=50)
-    except Exception as e:
-        print('All file downloaded......,\n You"ve finished your job, Thanks!!\n\n------------')
-        job_finished = True
-        return None
-    df1['status'] = 'downloading'
-    df.update(df1)
-    df.to_sql('cmip6_file_manager', conn, if_exists='replace', index=False)
-    return df
+def get_1_record():
+    """Get one record from mysql database"""
+    conn = pymysql.connect(host='124.220.27.50', port=3306, user='colab', password='colab123456', db='colab')
+    read_sql = "SELECT * FROM `colab`.`cmip6_files` WHERE `status` = 'not requested' LIMIT 0,100"
+    get_col_name_sql = "select COLUMN_NAME from INFORMATION_SCHEMA.COLUMNS where TABLE_NAME='cmip6_files'"
+    with conn:
+        with conn.cursor() as cur:
+            # Get column names
+            cur.execute(get_col_name_sql)
+            columns = cur.fetchall()
+            columns = [i[0] for i in columns]
+            # Get a record
+            cur.execute(read_sql)
+            res = cur.fetchall()
+            if len(res) == 0:
+                return 'Finished'
+            res = random.choice(res)
+            res = dict(zip(columns, res))
+            # Update value of the record
+            log_downloading_sql = f"UPDATE `colab`.`cmip6_files` SET `status` = 'downloading' WHERE `url` = '{res['url']}'"
+            cur.execute(log_downloading_sql)
+        conn.commit()
+
+    return res
 
 
-def log_downloaded_files() -> None:
-    """Log downloaded files"""
-    cur_dir = os.path.dirname(__file__)
-    root_dir = Path(os.path.dirname(cur_dir))
-    config = json.loads(open(f'{root_dir}/resources/config.json').read())
-    database = Path(config['Database_folder'])
+def download_1_record(res: dict, data_folder: str) -> None:
+    """Download a record with wget library"""
+    def bar_progress(current, total, width=80):
+        progress_message = "%d%% [%d / %d] MB" % (current / total * 100, current / 10e6, total / 10e6)
+        # Don't use print() as it will print in new line every time.
+        sys.stdout.write("\r" + progress_message)
 
-    filelist = []
-    # Get all files under the database folder
-    for root, dirs, files in os.walk(database):
-        for file in files:
-            if file.endswith('.nc'):
-                filelist.append(file)
+    file_folder = f'{data_folder}\\{res["param"]}\\{res["model"]}\\{res["scenario"]}'
+    Path(file_folder).mkdir(parents=True, exist_ok=True)
+    file_path = f'{file_folder}\\{res["filename"]}'
 
-    df1 = pd.DataFrame(filelist, columns=['filename'])
-    # get mysql dataframe
-    df = pd.read_sql('cmip6_file_manager', create_engine('mysql+pymysql://colab:colab123456@124.220.27.50/colab'))
-    df2 = pd.merge(df, df1, on='filename', how='inner')
-    print(len(df2))
-    df2['status'] = 'downloaded'
-    df.update(df2)
+    # Check file existence
+    if not os.path.exists(file_path):
+        # Check url connection with requests library
+        status_code = requests.head(res['url']).status_code
+        if status_code != 200:
+            return None
+        # Download file with wget library
+        print(f'{datetime.datetime.now().strftime("%m-%d %H:%M:%S")}--- downloading {res["filename"]}')
+        wget.download(res['url'], file_path, bar=bar_progress)
 
-    df.to_sql('cmip6_file_manager', create_engine('mysql+pymysql://colab:colab123456@124.220.27.50/colab'), if_exists='replace', index=False)
     return None
 
 
-def run() -> None:
+def update_downloaded_record(res: dict) -> None:
+    """Update status of a record in mysql database"""
+    conn = pymysql.connect(host='124.220.27.50', port=3306, user='colab', password='colab123456', db='colab')
+    update_sql = f"UPDATE `colab`.`cmip6_files` SET `status` = 'downloaded' WHERE `url` = '{res['url']}'"
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(update_sql)
+        conn.commit()
+    return None
+
+
+def run(res: dict, database: 'str') -> str:
     """Run"""
-    # reset database in mysql
-    df = pd.read_csv('../resources/res.csv')
-    df['status'] = 'not requested'
-    write_df(df=df)
-
-
-def test():
-    project_name = 'code'
-    cur_path = os.path.dirname(__file__)
-    path2 = os.path.dirname(cur_path)
-    path = os.path.join(path2, 'config.json')
-    print(cur_path, path2, path)
+    try:
+        download_1_record(res=res, data_folder=database)
+        update_downloaded_record(res=res)
+    except Exception as e:
+        print('Some Error Occurred: ', e)
+    return 'continue'
 
 
 if __name__ == '__main__':
-    run()
+    # reset database in mysql
+    df = pd.read_csv('../resources/res.csv')
+    df['status'] = 'not requested'
+    # write_df(df=df)
